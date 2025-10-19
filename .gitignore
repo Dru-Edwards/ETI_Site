@@ -1,0 +1,110 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.*.local
+.dev.vars
+*.vars
+
+# Cloudflare
+.wrangler/
+.mf/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Testing
+coverage/
+.nyc_output/
+.pytest_cache/
+__pycache__/
+*.pyc
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+migrations/*.sql
+
+# R2/Assets
+uploads/
+public/uploads/
+
+# Agent secrets
+agents/**/*.key
+agents/**/*.pem
+agents/**/credentials.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# Lock files (keep package-lock.json for npm workspaces)
+yarn.lock
+pnpm-lock.yaml
+
+# Test artifacts
+tests/_artifacts/
+cypress/screenshots/
+cypress/videos/
+
+# Build artifacts
+*.min.js
+*.min.css
+*.map
+
+# Python
+*.py[cod]
+*$py.class
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Docker
+.dockerignore
+docker-compose.override.yml

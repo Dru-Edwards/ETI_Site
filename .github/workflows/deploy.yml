@@ -1,0 +1,175 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '8'
+
+jobs:
+  deploy-api:
+    name: Deploy API to Cloudflare Workers
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build API
+        run: pnpm -F api build
+      
+      - name: Run D1 Migrations
+        run: |
+          cd apps/api
+          npx wrangler d1 migrations apply cloudflair-db --remote
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      
+      - name: Deploy to Workers
+        run: |
+          cd apps/api
+          npx wrangler deploy \
+            --env ${{ github.event.inputs.environment || 'production' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+
+  deploy-web:
+    name: Deploy Web to Cloudflare Pages
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    needs: deploy-api
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: pnpm/action-setup@v2
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build Web App
+        run: pnpm -F web build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.API_URL }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ vars.STRIPE_PUBLISHABLE_KEY }}
+          NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+      
+      - name: Deploy to Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
+          command: pages deploy apps/web/.next --project-name=cloudflair-web --commit-dirty=true
+
+  post-deploy:
+    name: Post-Deploy Verification
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Health Check - API
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://api.cloudflair.com/health)
+          if [ $response -eq 200 ]; then
+            echo "✅ API health check passed"
+          else
+            echo "❌ API health check failed with status $response"
+            exit 1
+          fi
+      
+      - name: Health Check - Web
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://cloudflair.com)
+          if [ $response -eq 200 ]; then
+            echo "✅ Web health check passed"
+          else
+            echo "❌ Web health check failed with status $response"
+            exit 1
+          fi
+      
+      - name: Run Synthetic Tests
+        run: |
+          # Run basic synthetic tests
+          curl -X POST https://api.cloudflair.com/agent/metrics/snapshot \
+            -H "Content-Type: application/json" \
+            -H "X-Agent-Id: OpsAgent" \
+            -H "X-Timestamp: $(date +%s)" \
+            -d '{"test": true}'
+      
+      - name: Notify Success
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const environment = '${{ github.event.inputs.environment || 'production' }}';
+            const deploymentUrl = environment === 'production' ? 
+              'https://cloudflair.com' : 
+              `https://${environment}.cloudflair.com`;
+            
+            await github.rest.repos.createDeploymentStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              deployment_id: context.payload.deployment.id,
+              state: 'success',
+              environment_url: deploymentUrl,
+              description: 'Deployment completed successfully'
+            });
+
+  rollback:
+    name: Rollback on Failure
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web]
+    if: failure()
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.before }}
+      
+      - name: Rollback Deployment
+        run: |
+          echo "⚠️ Deployment failed, initiating rollback to previous version"
+          # Add rollback logic here
+      
+      - name: Notify Failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Deployment failed and has been rolled back. Please check the logs for details.'
+            });

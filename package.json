@@ -1,0 +1,34 @@
+{
+  "name": "cloudflair",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CloudFlair - Cloudflare-native web stack with agent automation",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "clean": "pnpm -r clean",
+    "setup": "tsx scripts/setup.ts",
+    "setup:agents": "python scripts/provision-agents.py",
+    "setup:secrets": "cd apps/api && wrangler secret:bulk",
+    "migrate:create": "pnpm -F api migrate:create",
+    "migrate:apply": "pnpm -F api migrate:apply",
+    "migrate:apply:remote": "pnpm -F api migrate:apply:remote",
+    "deploy:api": "pnpm -F api deploy",
+    "deploy:web": "pnpm -F web deploy",
+    "deploy": "pnpm deploy:api && pnpm deploy:web"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.15.1"
+}

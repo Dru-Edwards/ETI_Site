@@ -1,0 +1,83 @@
+name = "cloudflair-api"
+main = "src/index.ts"
+compatibility_date = "2025-10-12"
+node_compat = true
+
+# Account and route configuration
+account_id = "<CF_ACCOUNT_ID>"
+route = { pattern = "api.cloudflair.com/*", zone_name = "cloudflair.com" }
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "cloudflair-db"
+database_id = "<REPLACE_WITH_D1_DATABASE_ID>"
+
+# KV Namespaces
+[[kv_namespaces]]
+binding = "CONFIG_KV"
+id = "<REPLACE_WITH_KV_NAMESPACE_ID>"
+preview_id = "<REPLACE_WITH_KV_PREVIEW_ID>"
+
+# R2 Buckets
+[[r2_buckets]]
+binding = "ASSETS_BUCKET"
+bucket_name = "cloudflair-assets"
+
+[[r2_buckets]]
+binding = "REPORTS_BUCKET"
+bucket_name = "cloudflair-reports"
+
+# Queues
+[[queues.producers]]
+binding = "JOBS_QUEUE"
+queue = "cloudflair-jobs"
+
+[[queues.consumers]]
+queue = "cloudflair-jobs"
+max_batch_size = 10
+max_batch_timeout = 30
+
+# Cron Triggers
+[triggers]
+crons = [
+  "30 11 * * *",  # Daily report at 06:30 CT (11:30 UTC)
+  "0 */6 * * *",  # Analytics snapshot every 6 hours
+  "0 2 * * 0",    # Weekly SEO audit (Sunday 2 AM UTC)
+]
+
+# Environment Variables
+[vars]
+TIMEZONE = "America/Chicago"
+ENVIRONMENT = "production"
+API_VERSION = "v1"
+CORS_ORIGINS = "https://cloudflair.com,https://www.cloudflair.com"
+
+# Development environment
+[env.development]
+name = "cloudflair-api-dev"
+vars = { ENVIRONMENT = "development", CORS_ORIGINS = "http://localhost:3000" }
+
+[[env.development.d1_databases]]
+binding = "DB"
+database_name = "cloudflair-db-dev"
+database_id = "<REPLACE_WITH_DEV_D1_DATABASE_ID>"
+
+# Staging environment
+[env.staging]
+name = "cloudflair-api-staging"
+vars = { ENVIRONMENT = "staging", CORS_ORIGINS = "https://staging.cloudflair.com" }
+
+# Observability
+[observability]
+enabled = true
+
+# Logpush (optional)
+# [logpush]
+# enabled = true
+# destination = "r2://cloudflair-logs"
+
+# Service bindings (if needed for inter-service communication)
+# [[services]]
+# binding = "WEB_SERVICE"
+# service = "cloudflair-web"

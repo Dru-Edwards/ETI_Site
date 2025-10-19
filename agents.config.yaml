@@ -1,0 +1,158 @@
+# CloudFlair Agent Registry Configuration
+# This file defines all agents that can interact with the system
+
+agents:
+  - name: ContentAgent
+    display_name: Content Agent
+    role: "Content & Documentation"
+    description: "Manages website content, blog posts, and documentation through PR-based workflows"
+    api_key_secret: "CONTENTAGENT_API_KEY"
+    rbac:
+      allowed_routes:
+        - /agent/tasks
+        - /agent/proposals/content
+        - /agent/seo/audit
+        - /agent/flags
+        - /agent/metrics/snapshot
+      risk_level: medium
+      require_human_approval_for:
+        - content:delete
+        - flags:high_risk
+        - deploy:production
+    defaults:
+      branch: "agent/ContentAgent/auto-{date}"
+      content_root: "apps/web/content"
+      feature_flag_prefix: "content_"
+      max_content_length: 10000
+      allowed_file_types: [".mdx", ".md", ".json"]
+
+  - name: SEOAgent
+    display_name: SEO Optimization Agent
+    role: "SEO & Performance"
+    description: "Monitors and optimizes SEO, performance metrics, and accessibility"
+    api_key_secret: "SEOAGENT_API_KEY"
+    rbac:
+      allowed_routes:
+        - /agent/tasks
+        - /agent/seo/audit
+        - /agent/proposals/content
+        - /agent/metrics/snapshot
+        - /agent/flags
+      risk_level: low
+      require_human_approval_for:
+        - content:structural_changes
+        - flags:high_risk
+    defaults:
+      branch: "agent/SEOAgent/auto-{date}"
+      lighthouse_threshold: 90
+      scan_frequency: "daily"
+      feature_flag_prefix: "seo_"
+
+  - name: OpsAgent
+    display_name: Operations Agent
+    role: "Operations & Monitoring"
+    description: "Handles analytics, reporting, monitoring, and operational tasks"
+    api_key_secret: "OPSAGENT_API_KEY"
+    rbac:
+      allowed_routes:
+        - /agent/tasks
+        - /agent/metrics/snapshot
+        - /agent/metrics/ingest
+        - /agent/reports/generate
+        - /agent/flags
+      risk_level: low
+      require_human_approval_for:
+        - infrastructure:modify
+        - alerts:disable
+    defaults:
+      branch: "agent/OpsAgent/auto-{date}"
+      report_recipients: ["ops@cloudflair.com"]
+      alert_thresholds:
+        error_rate: 0.05
+        latency_p95: 1000
+        uptime: 0.999
+      feature_flag_prefix: "ops_"
+
+  - name: CommerceAgent
+    display_name: Commerce Agent
+    role: "Commerce & Billing"
+    description: "Manages Stripe integration, subscription monitoring, and revenue optimization"
+    api_key_secret: "COMMERCEAGENT_API_KEY"
+    rbac:
+      allowed_routes:
+        - /agent/tasks
+        - /agent/commerce/reconcile
+        - /agent/commerce/failed-payments
+        - /agent/metrics/snapshot
+        - /agent/flags
+      risk_level: high
+      require_human_approval_for:
+        - pricing:modify
+        - customer:delete
+        - refund:issue
+        - subscription:cancel
+    defaults:
+      branch: "agent/CommerceAgent/auto-{date}"
+      reconciliation_frequency: "hourly"
+      payment_retry_attempts: 3
+      feature_flag_prefix: "commerce_"
+
+  - name: CommunityAgent
+    display_name: Community Agent
+    role: "Community & Engagement"
+    description: "Manages newsletter, events, and community engagement"
+    api_key_secret: "COMMUNITYAGENT_API_KEY"
+    rbac:
+      allowed_routes:
+        - /agent/tasks
+        - /agent/newsletter/sync
+        - /agent/events/manage
+        - /agent/proposals/content
+        - /agent/metrics/snapshot
+        - /agent/flags
+      risk_level: medium
+      require_human_approval_for:
+        - newsletter:blast
+        - events:delete
+        - community:ban_user
+    defaults:
+      branch: "agent/CommunityAgent/auto-{date}"
+      newsletter_schedule: "weekly"
+      event_reminder_days: [7, 1]
+      feature_flag_prefix: "community_"
+
+# Global configuration
+global:
+  hmac:
+    algorithm: "sha256"
+    header_prefix: "X-Agent-"
+    max_clock_skew_seconds: 300
+  
+  rate_limits:
+    default:
+      requests_per_minute: 60
+      burst_size: 10
+    by_risk_level:
+      low:
+        requests_per_minute: 120
+        burst_size: 20
+      medium:
+        requests_per_minute: 60
+        burst_size: 10
+      high:
+        requests_per_minute: 30
+        burst_size: 5
+  
+  github:
+    org: "cloudflair"
+    repo: "cloudflair-web"
+    default_reviewers: ["ops-team"]
+    auto_merge:
+      enabled: true
+      allowed_risk_levels: ["low"]
+      require_checks: ["build", "test", "lighthouse"]
+  
+  audit:
+    retention_days: 90
+    log_level: "info"
+    sensitive_fields: ["api_key", "password", "token", "secret"]

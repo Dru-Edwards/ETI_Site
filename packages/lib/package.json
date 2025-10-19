@@ -1,0 +1,33 @@
+{
+  "name": "@cloudflair/lib",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./logger": "./src/logger/index.ts",
+    "./analytics": "./src/analytics/index.ts",
+    "./policy": "./src/policy/index.ts",
+    "./flags": "./src/flags/index.ts",
+    "./utils": "./src/utils/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest watch",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "jose": "^5.2.0",
+    "nanoid": "^5.0.5",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  }
+}
